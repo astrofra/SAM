@@ -1,7 +1,8 @@
 SAM
 ===
 
-Software Automatic Mouth - Tiny Speech Synthesizer 
+Software Automatic Mouth - Tiny Speech Synthesizer
+AMIGA 68000 version. 
 
 
 What is SAM?
@@ -19,10 +20,8 @@ An online version and executables for Windows can be found on the web site: http
 Compile
 =======
 
-Simply type "make" in your command prompt.
-In order to compile without SDL remove the SDL statements from the CFLAGS and LFLAGS variables in the file "Makefile".
-
-It should compile on every UNIX-like operating system. For Windows you need Cygwin or MinGW( + libsdl).
+Build with SAS/C on Amiga OS 3.0.
+Double-click on the BUILD icon.
 
 
 Usage
@@ -38,7 +37,7 @@ If you have disabled SDL try
 
 	./sam -wav i_am_sam.wav I am Sam
 
-to get a wav file. This file can be played by many media players available for the PC.
+to get a wav file. The wav is corrupted at the momment (big-endian issue)
 
 you can try other options like
 	-pitch number
@@ -85,10 +84,6 @@ e. g.
 Then it was manually rewritten to remove most of the 
 jumps and register variables in the code and rename the variables to proper names. 
 Most of the description below is a result of this rewriting process.
-
-Unfortunately its still a not very good readable. But you should see where I started :)
-
-
 
 Short description
 =================
@@ -251,3 +246,6 @@ If you discovered some new knowledge about the code please mail me.
 
 Sebastian Macke
 Email: sebastian@macke.de
+
+Amiga adaptation by Astrofra
+Email: astrofra@gmail.com

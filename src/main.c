@@ -14,28 +14,30 @@
 
 void WriteWav(char* filename, char* buffer, int bufferlength)
 {
+	unsigned int filesize;
+	unsigned int fmtlength = 16;
+	unsigned short int format=1; //PCM
+	unsigned short int channels=1;
+	unsigned int samplerate = 22050;
+	unsigned short int blockalign = 1;
+	unsigned short int bitspersample=8;
+
 	FILE *file = fopen(filename, "wb");
 	if (file == NULL) return;
 	//RIFF header
 	fwrite("RIFF", 4, 1,file);
-	unsigned int filesize=bufferlength + 12 + 16 + 8 - 8;
+	filesize=bufferlength + 12 + 16 + 8 - 8;
 	fwrite(&filesize, 4, 1, file);
 	fwrite("WAVE", 4, 1, file);
 
 	//format chunk
 	fwrite("fmt ", 4, 1, file);
-	unsigned int fmtlength = 16;
 	fwrite(&fmtlength, 4, 1, file);
-	unsigned short int format=1; //PCM
 	fwrite(&format, 2, 1, file);
-	unsigned short int channels=1;
 	fwrite(&channels, 2, 1, file);
-	unsigned int samplerate = 22050;
 	fwrite(&samplerate, 4, 1, file);
 	fwrite(&samplerate, 4, 1, file); // bytes/second
-	unsigned short int blockalign = 1;
 	fwrite(&blockalign, 2, 1, file);
-	unsigned short int bitspersample=8;
 	fwrite(&bitspersample, 2, 1, file);
 
 	//data chunk
@@ -154,9 +156,9 @@ int main(int argc, char **argv)
 	int phonetic = 0;
 
 	char* wavfilename = NULL;
-	char input[256];
+	unsigned char input[256];
 	
-	for(i=0; i<256; i++) input[i] = 0;
+	memset(input, 0, 256);
 
 	if (argc <= 1)
 	{
@@ -169,8 +171,8 @@ int main(int argc, char **argv)
 	{
 		if (argv[i][0] != '-')
 		{
-			strcat(input, argv[i]);
-			strcat(input, " ");
+			strcat((char*)input, argv[i]);
+			strcat((char*)input, " ");
 		} else
 		{
 			if (strcmp(&argv[i][1], "wav")==0)
@@ -192,22 +194,22 @@ int main(int argc, char **argv)
 			} else
 			if (strcmp(&argv[i][1], "pitch")==0)
 			{
-				SetPitch(atoi(argv[i+1]));
+				SetPitch((unsigned char)(atoi(argv[i+1]),255));
 				i++;
 			} else
 			if (strcmp(&argv[i][1], "speed")==0)
 			{
-				SetSpeed(atoi(argv[i+1]));
+				SetSpeed((unsigned char)(atoi(argv[i+1]),255));
 				i++;
 			} else
 			if (strcmp(&argv[i][1], "mouth")==0)
 			{
-				SetMouth(atoi(argv[i+1]));
+				SetMouth((unsigned char)(atoi(argv[i+1]),255));
 				i++;
 			} else
 			if (strcmp(&argv[i][1], "throat")==0)
 			{
-				SetThroat(atoi(argv[i+1]));
+				SetThroat((unsigned char)(atoi(argv[i+1]),255));
 				i++;
 			} else
 			{
@@ -220,7 +222,7 @@ int main(int argc, char **argv)
 	} //while
 
 	for(i=0; input[i] != 0; i++)
-		input[i] = toupper((int)input[i]);
+		input[i] = (unsigned char)toupper((int)input[i]);
 
 	if (debug)
 	{
@@ -230,11 +232,11 @@ int main(int argc, char **argv)
 	
 	if (!phonetic)
 	{
-		strcat(input, "[");
+		strcat((char*)input, "[");
 		if (!TextToPhonemes(input)) return 1;
 		if (debug)
 			printf("phonetic input: %s\n", input);
-	} else strcat(input, "\x9b");
+	} else strcat((char*)input, "\x9b");
 
 #ifdef USESDL
 	if ( SDL_Init(SDL_INIT_AUDIO) < 0 ) 
@@ -251,19 +253,11 @@ int main(int argc, char **argv)
 		PrintUsage();
 		return 1;
 	}
-	
+
 	if (wavfilename != NULL) 
 		WriteWav(wavfilename, GetBuffer(), GetBufferLength()/50);
 	else
 		OutputSound();
 
-	
 	return 0;
-
 }
-
-
-
-
-
-

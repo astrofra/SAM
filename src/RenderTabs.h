@@ -506,7 +506,4 @@ unsigned char sampleTable[0x500] =
 	,  0xFE , 1 , 0xFC , 3 , 0xE0 ,0xF , 0 , 0xFC
 };
 
-
-
 #endif
-

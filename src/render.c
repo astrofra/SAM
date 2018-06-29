@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -8,9 +7,6 @@
 
 #include "debug.h"
 extern int debug;
-
-unsigned char wait1 = 7;
-unsigned char wait2 = 6;
 
 //extern unsigned char A, X, Y;
 //extern unsigned char mem44;
@@ -37,12 +33,12 @@ unsigned char amplitude3[256];
 unsigned char sampledConsonantFlag[256]; // tab44800
 
 
-void AddInflection(unsigned char mem48, unsigned char phase1, unsigned char X);
+void AddInflection(unsigned char mem48, unsigned char X);
 
 //return = hibyte(mem39212*mem39213) <<  1
 unsigned char trans(unsigned char a, unsigned char b)
 {
-    return ((a * b) >> 8) << 1;
+    return (((unsigned int)a * b) >> 8) << 1;
 }
 
 
@@ -55,7 +51,7 @@ extern char *buffer;
 
 
 //timetable for more accurate c64 simulation
-int timetable[5][5] =
+static const int timetable[5][5] =
 {
 	{162, 167, 167, 127, 128},
 	{226, 60, 60, 0, 0},
@@ -79,8 +75,8 @@ void Output(int index, unsigned char A)
 static unsigned char RenderVoicedSample(unsigned short hi, unsigned char off, unsigned char phase1)
 {
 	do {
-		unsigned char sample = sampleTable[hi+off];
 		unsigned char bit = 8;
+		unsigned char sample = sampleTable[hi+off];
 		do {
 			if ((sample & 128) != 0) Output(3, 26);
 			else Output(4, 6);
@@ -178,14 +174,14 @@ void RenderSample(unsigned char *mem66, unsigned char consonantFlag, unsigned ch
 
     unsigned short hi = hibyte*256;
 	// voiced sample?
-	unsigned char pitch = consonantFlag & 248;
-	if(pitch == 0) {
+	unsigned char pitchl = consonantFlag & 248;
+	if(pitchl == 0) {
         // voiced phoneme: Z*, ZH, V*, DH
-		pitch = pitches[mem49] >> 4;
-        *mem66 = RenderVoicedSample(hi, *mem66, pitch ^ 255);
-        return;
+		pitchl = pitches[mem49] >> 4;
+        *mem66 = RenderVoicedSample(hi, *mem66, pitchl ^ 255);
 	}
-    RenderUnvoicedSample(hi, pitch^255, tab48426[hibyte]);
+	else
+		RenderUnvoicedSample(hi, pitchl^255, tab48426[hibyte]);
 }
 
 
@@ -200,25 +196,25 @@ void RenderSample(unsigned char *mem66, unsigned char consonantFlag, unsigned ch
 //
 static void CreateFrames()
 {
-	unsigned char phase1 = 0;
-
 	unsigned char X = 0;
     unsigned int i = 0;
     while(i < 256) {
         // get the phoneme at the index
         unsigned char phoneme = phonemeIndexOutput[i];
+		unsigned char phase1;
+		unsigned phase2;
 	
         // if terminal phoneme, exit the loop
         if (phoneme == 255) break;
 	
-        if (phoneme == PHONEME_PERIOD)   AddInflection(RISING_INFLECTION, phase1,X);
-        else if (phoneme == PHONEME_QUESTION) AddInflection(FALLING_INFLECTION, phase1,X);
+        if (phoneme == PHONEME_PERIOD)   AddInflection(RISING_INFLECTION, X);
+        else if (phoneme == PHONEME_QUESTION) AddInflection(FALLING_INFLECTION, X);
 
         // get the stress amount (more stress = higher pitch)
         phase1 = tab47492[stressOutput[i] + 1];
 	
         // get number of frames to write
-        unsigned phase2 = phonemeLengthOutput[i];
+        phase2 = phonemeLengthOutput[i];
 	
         // copy from the source to the frames list
         do {
@@ -287,10 +283,12 @@ void AssignPitchContour()
 // 4. Render the each frame.
 void Render()
 {
+    unsigned char t;
+
 	if (phonemeIndexOutput[0] == 255) return; //exit if no data
 
     CreateFrames();
-    unsigned char t = CreateTransitions();
+    t = CreateTransitions();
 
     if (!singmode) AssignPitchContour();
     RescaleAmplitude();
@@ -307,7 +305,7 @@ void Render()
 // index X. A rising inflection is used for questions, and 
 // a falling inflection is used for statements.
 
-void AddInflection(unsigned char inflection, unsigned char phase1, unsigned char pos)
+void AddInflection(unsigned char inflection, unsigned char pos)
 {
     unsigned char A;
     // store the location of the punctuation
@@ -338,17 +336,14 @@ void AddInflection(unsigned char inflection, unsigned char phase1, unsigned char
 */
 void SetMouthThroat(unsigned char mouth, unsigned char throat)
 {
-	unsigned char initialFrequency;
-	unsigned char newFrequency = 0;
-
 	// mouth formants (F1) 5..29
-	unsigned char mouthFormants5_29[30] = {
+	static const unsigned char mouthFormants5_29[30] = {
 		0, 0, 0, 0, 0, 10,
 		14, 19, 24, 27, 23, 21, 16, 20, 14, 18, 14, 18, 18,
 		16, 13, 15, 11, 18, 14, 11, 9, 6, 6, 6};
 
 	// throat formants (F2) 5..29
-	unsigned char throatFormants5_29[30] = {
+	static const unsigned char throatFormants5_29[30] = {
 	255, 255,
 	255, 255, 255, 84, 73, 67, 63, 40, 44, 31, 37, 45, 73, 49,
 	36, 30, 51, 37, 29, 69, 24, 50, 30, 24, 83, 46, 54, 86,
@@ -356,18 +351,19 @@ void SetMouthThroat(unsigned char mouth, unsigned char throat)
 
 	// there must be no zeros in this 2 tables
 	// formant 1 frequencies (mouth) 48..53
-	unsigned char mouthFormants48_53[6] = {19, 27, 21, 27, 18, 13};
+	static const unsigned char mouthFormants48_53[6] = {19, 27, 21, 27, 18, 13};
        
 	// formant 2 frequencies (throat) 48..53
-	unsigned char throatFormants48_53[6] = {72, 39, 31, 43, 30, 34};
+	static const unsigned char throatFormants48_53[6] = {72, 39, 31, 43, 30, 34};
 
+	unsigned char newFrequency = 0;
 	unsigned char pos = 5;
 
 	// recalculate formant frequencies 5..29 for the mouth (F1) and throat (F2)
 	while(pos < 30)
 	{
 		// recalculate mouth frequency
-		initialFrequency = mouthFormants5_29[pos];
+		unsigned char initialFrequency = mouthFormants5_29[pos];
 		if (initialFrequency != 0) newFrequency = trans(mouth, initialFrequency);
 		freq1data[pos] = newFrequency;
                
@@ -382,15 +378,12 @@ void SetMouthThroat(unsigned char mouth, unsigned char throat)
 	pos = 0;
     while(pos < 6) {
 		// recalculate F1 (mouth formant)
-		initialFrequency = mouthFormants48_53[pos];
-		newFrequency = trans(mouth, initialFrequency);
-		freq1data[pos+48] = newFrequency;
+		unsigned char initialFrequency = mouthFormants48_53[pos];
+		freq1data[pos+48] = trans(mouth, initialFrequency);
            
 		// recalculate F2 (throat formant)
 		initialFrequency = throatFormants48_53[pos];
-		newFrequency = trans(throat, initialFrequency);
-		freq2data[pos+48] = newFrequency;
+		freq2data[pos+48] = trans(throat, initialFrequency);
 		pos++;
 	}
 }
-

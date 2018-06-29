@@ -43,9 +43,9 @@ void PrintOutput(
 	unsigned char *a3,
 	unsigned char *p)
 {
+	int i = 0;
 	printf("===========================================\n");
 	printf("Final data for speech output:\n\n");
-	int i = 0;
 	printf(" flags ampl1 freq1 ampl2 freq2 ampl3 freq3 pitch\n");
 	printf("------------------------------------------------\n");
 	while(i < 255)
@@ -59,9 +59,9 @@ void PrintOutput(
 
 extern unsigned char GetRuleByte(unsigned short mem62, unsigned char Y);
 
-void PrintRule(int offset)
+void PrintRule(unsigned short offset)
 {
-	int i = 1;
+	unsigned char i = 1;
 	unsigned char A = 0;
 	printf("Applying rule: ");
 	do
@@ -72,4 +72,3 @@ void PrintRule(int offset)
 	} while ((A&128)==0);
 	printf("\n");
 }
-

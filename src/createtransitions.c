@@ -46,9 +46,6 @@ extern unsigned char outBlendLength[];
 extern unsigned char inBlendLength[];
 extern unsigned char pitches[];
 
-extern unsigned char Read(unsigned char p, unsigned char Y);
-extern void Write(unsigned char p, unsigned char Y, unsigned char value);
-
 extern unsigned char frequency1[256];
 extern unsigned char frequency2[256];
 extern unsigned char frequency3[256];
@@ -77,34 +74,36 @@ unsigned char Read(unsigned char p, unsigned char Y)
 	case 172: return amplitude1[Y];
 	case 173: return amplitude2[Y];
 	case 174: return amplitude3[Y];
+	default: 
+		printf("Error reading from tables");
+		return 0;
 	}
-	printf("Error reading to tables");
-	return 0;
 }
 
 void Write(unsigned char p, unsigned char Y, unsigned char value)
 {
-
 	switch(p)
 	{
-	case 168: pitches[Y] = value; return;
-	case 169: frequency1[Y] = value;  return;
-	case 170: frequency2[Y] = value;  return;
-	case 171: frequency3[Y] = value;  return;
-	case 172: amplitude1[Y] = value;  return;
-	case 173: amplitude2[Y] = value;  return;
-	case 174: amplitude3[Y] = value;  return;
+	case 168: pitches[Y]    = value; return;
+	case 169: frequency1[Y] = value; return;
+	case 170: frequency2[Y] = value; return;
+	case 171: frequency3[Y] = value; return;
+	case 172: amplitude1[Y] = value; return;
+	case 173: amplitude2[Y] = value; return;
+	case 174: amplitude3[Y] = value; return;
+	default:
+		printf("Error writing to tables\n");
+		return;
 	}
-	printf("Error writing to tables\n");
 }
 
 
 // linearly interpolate values
-void interpolate(unsigned char width, unsigned char table, unsigned char frame, unsigned char mem53)
+void interpolate(unsigned char width, unsigned char table, unsigned char frame, char mem53)
 {
-    unsigned char sign      = ((char)(mem53) < 0);
-    unsigned char remainder = abs((char)mem53) % width;
-    unsigned char div       = (unsigned char)((char)(mem53) / width);
+    unsigned char sign      = (mem53 < 0);
+    unsigned char remainder = abs(mem53) % width;
+    unsigned char div       = mem53 / width;
 
     unsigned char error = 0;
     unsigned char pos   = width;
@@ -122,7 +121,7 @@ void interpolate(unsigned char width, unsigned char table, unsigned char frame, 
     }
 }
 
-void interpolate_pitch(unsigned char width, unsigned char pos, unsigned char mem49, unsigned char phase3) {
+void interpolate_pitch(unsigned char pos, unsigned char mem49, unsigned char phase3) {
     // unlike the other values, the pitches[] interpolates from 
     // the middle of the current phoneme to the middle of the 
     // next phoneme
@@ -131,27 +130,33 @@ void interpolate_pitch(unsigned char width, unsigned char pos, unsigned char mem
     unsigned char cur_width  = phonemeLengthOutput[pos] / 2;
     unsigned char next_width = phonemeLengthOutput[pos+1] / 2;
     // sum the values
-    width = cur_width + next_width;
-    unsigned char pitch = pitches[next_width + mem49] - pitches[mem49- cur_width];
+    unsigned char width = cur_width + next_width;
+    char pitch = pitches[next_width + mem49] - pitches[mem49- cur_width];
     interpolate(width, 168, phase3, pitch);
 }
 
 
 unsigned char CreateTransitions()
 {
-    unsigned char phase1;
-    unsigned char phase2;
 	unsigned char mem49 = 0; 
 	unsigned char pos = 0;
 	while(1) {
+		unsigned char next_rank;
+		unsigned char rank;
+		unsigned char speedcounter;
+		unsigned char phase1;
+		unsigned char phase2;
+		unsigned char phase3;
+		unsigned char transition;
+
 		unsigned char phoneme      = phonemeIndexOutput[pos];
 		unsigned char next_phoneme = phonemeIndexOutput[pos+1];
 
 		if (next_phoneme == 255) break; // 255 == end_token
 
         // get the ranking of each phoneme
-		unsigned char next_rank = blendRank[next_phoneme];
-		unsigned char rank      = blendRank[phoneme];
+		next_rank = blendRank[next_phoneme];
+		rank      = blendRank[phoneme];
 		
 		// compare the rank - lower rank value is stronger
 		if (rank == next_rank) {
@@ -171,14 +176,13 @@ unsigned char CreateTransitions()
 
 		mem49 += phonemeLengthOutput[pos]; 
 
-		unsigned char speedcounter = mem49 + phase2;
-		unsigned char phase3       = mem49 - phase1;
-		unsigned char transition   = phase1 + phase2; // total transition?
+		speedcounter = mem49 + phase2;
+		phase3       = mem49 - phase1;
+		transition   = phase1 + phase2; // total transition?
 		
 		if (((transition - 2) & 128) == 0) {
-
-            interpolate_pitch(transition, pos, mem49, phase3);
-            unsigned table = 169;
+            unsigned char table = 169;
+            interpolate_pitch(pos, mem49, phase3);
             while (table < 175) {
                 // tables:
                 // 168  pitches[]
@@ -189,7 +193,7 @@ unsigned char CreateTransitions()
                 // 173  amplitude2
                 // 174  amplitude3
                 
-                unsigned char value = Read(table, speedcounter) - Read(table, phase3);
+                char value = Read(table, speedcounter) - Read(table, phase3);
                 interpolate(transition, table, phase3, value);
                 table++;
             }
@@ -200,6 +204,3 @@ unsigned char CreateTransitions()
     // add the length of this phoneme
     return mem49 + phonemeLengthOutput[pos];
 }
-
-
-

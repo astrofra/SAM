@@ -4,7 +4,7 @@
 #include "ReciterTabs.h"
 #include "debug.h"
 
-unsigned char A, X, Y;
+unsigned char A, X;
 extern int debug;
 
 static unsigned char inputtemp[256];   // secure copy of input tab36096
@@ -17,8 +17,8 @@ unsigned char Code37055(unsigned char npos, unsigned char mask)
 }
 
 unsigned int match(const char * str) {
-    unsigned char ch;
-    while ((ch = *str)) {
+    while (*str) {
+        unsigned char ch = *str;
         A = inputtemp[X++];
         if (A != ch) return 0;
         ++str;
@@ -37,8 +37,9 @@ unsigned char GetRuleByte(unsigned short mem62, unsigned char Y) {
 }
 
 int handle_ch2(unsigned char ch, unsigned char mem) {
+    unsigned char tmp;
     X = mem;
-    unsigned char tmp = tab36376[inputtemp[mem]];
+    tmp = tab36376[inputtemp[mem]];
     if (ch == ' ') {
         if(tmp & 128) return 1;
     } else if (ch == '#') {
@@ -52,34 +53,37 @@ int handle_ch2(unsigned char ch, unsigned char mem) {
 }
 
 
-int handle_ch(unsigned char A, unsigned char mem) {
+int handle_ch(unsigned char ch, unsigned char mem) {
+    unsigned char tmp;
     X = mem;
-    unsigned char tmp = tab36376[inputtemp[X]];
-    if (A == ' ') {
+    tmp = tab36376[inputtemp[X]];
+    if (ch == ' ') {
         if ((tmp & 128) != 0) return 1;
-    } else if (A == '#') {
+    } else if (ch == '#') {
         if ((tmp & 64) == 0) return 1;
-    } else if (A == '.') {
+    } else if (ch == '.') {
         if((tmp & 8) == 0) return 1;
-    } else if (A == '&') {
+    } else if (ch == '&') {
         if((tmp & 16) == 0) {
             if (inputtemp[X] != 72) return 1;
             ++X;
         }
-    } else if (A == '^') {
+    } else if (ch == '^') {
         if ((tmp & 32) == 0) return 1;
-    } else if (A == '+') {
+    } else if (ch == '+') {
         X = mem;
-        A = inputtemp[X];
-        if ((A != 69) && (A != 73) && (A != 89)) return 1;
+        ch = inputtemp[X];
+        if ((ch != 69) && (ch != 73) && (ch != 89)) return 1;
     } else return -1;
     return 0;
 }
 
 
-int TextToPhonemes(char *input) {
+int TextToPhonemes(unsigned char *input) {
 	unsigned char mem56;      //output position for phonemes
+	unsigned char mem57;
 	unsigned char mem58;
+	unsigned char mem59;
 	unsigned char mem60;
 	unsigned char mem61;
 	unsigned short mem62;     // memory position of current rule
@@ -87,6 +91,10 @@ int TextToPhonemes(char *input) {
 	unsigned char mem64;      // position of '=' or current character
 	unsigned char mem65;     // position of ')'
 	unsigned char mem66;     // position of '('
+
+	unsigned char Y;
+
+	int r;
 
 	inputtemp[0] = ' ';
 
@@ -102,7 +110,6 @@ int TextToPhonemes(char *input) {
 	inputtemp[255] = 27;
 	mem56 = mem61 = 255;
 
-    unsigned char mem57;
 pos36554:
     while (1) {
         while(1) {
@@ -138,9 +145,9 @@ pos36554:
         }
         input[X] = 32;
     }
-        
+
     if(!(mem57 & 128)) return 0;
-        
+
 	// go to the right rules for this character.
     X = mem64 - 'A';
     mem62 = tab37489[X] | (tab37515[X]<<8);
@@ -148,7 +155,7 @@ pos36554:
 pos36700:
 	// find next rule
 	while ((GetRuleByte(++mem62, 0) & 128) == 0);
-	unsigned char Y = 0;
+	Y = 0;
 	while(GetRuleByte(mem62, ++Y) != '(');
 	mem66 = Y;
     while(GetRuleByte(mem62, ++Y) != ')');
@@ -167,13 +174,13 @@ pos36700:
 		mem60 = ++X;
 	}
 
-
     // the string in the bracket is correct
 
-	unsigned char mem59 = mem61;
+	mem59 = mem61;
 
     while(1) {
-        while(1) {
+		unsigned char ch;
+		while(1) {
             mem66--;
             mem57 = GetRuleByte(mem62, mem66);
             if ((mem57 & 128) != 0) {
@@ -186,9 +193,9 @@ pos36700:
             --mem59;
         }
 
-        unsigned char ch = mem57;
+        ch = mem57;
 
-        int r = handle_ch2(ch, mem59-1);
+        r = handle_ch2(ch, mem59-1);
         if (r == -1) {
             switch (ch) {
             case '&':
@@ -211,7 +218,7 @@ pos36700:
             case '+':
                 X = mem59;
                 A = inputtemp[--X];
-                if ((A != 'E') && (A != 'I') && (A && 'Y')) r = 1;
+                if ((A != 'E') && (A != 'I') && (A != 'Y')) r = 1;
                 break;
             case ':':
                 while (Code37055(mem59-1,32)) --mem59;
@@ -241,13 +248,11 @@ pos36700:
         }
         
 pos37184:
-        X;
-        int r = 0;
+        r = 0;
         do {
-            unsigned char mem57;
             while (1) {
-                unsigned char Y = mem65 + 1;
-                if(Y  == mem64) {
+                Y = mem65 + 1;
+                if(Y == mem64) {
                     mem61 = mem60;
                     
                     if (debug) PrintRule(mem62);
@@ -296,4 +301,3 @@ pos37184:
     } while (A == '%');
 	return 0;
 }
-

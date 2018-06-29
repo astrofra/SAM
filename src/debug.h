@@ -12,6 +12,6 @@ void PrintOutput(
 	unsigned char *a3,
 	unsigned char *p);
 
-void PrintRule(int offset);
+void PrintRule(unsigned short offset);
 
 #endif

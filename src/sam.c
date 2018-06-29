@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
 #include "debug.h"
 #include "sam.h"
 #include "render.h"
@@ -14,9 +15,7 @@ enum {
     END   = 255
 };
 
-
-
-char input[256]; //tab39445
+unsigned char input[256]; //tab39445
 //standard sam sound
 unsigned char speed = 72;
 unsigned char pitch = 64;
@@ -26,17 +25,6 @@ int singmode = 0;
 
 extern int debug;
 
-unsigned char mem39;
-unsigned char mem44;
-unsigned char mem47;
-unsigned char mem49;
-unsigned char mem50;
-unsigned char mem51;
-unsigned char mem53;
-unsigned char mem59=0;
-
-unsigned char X;
-
 unsigned char stress[256]; //numbers from 0 to 8
 unsigned char phonemeLength[256]; //tab40160
 unsigned char phonemeindex[256];
@@ -45,18 +33,18 @@ unsigned char phonemeIndexOutput[60]; //tab47296
 unsigned char stressOutput[60]; //tab47365
 unsigned char phonemeLengthOutput[60]; //tab47416
 
-
-
+unsigned char loopIndex;
+unsigned char index;
 
 // contains the final soundbuffer
 int bufferpos=0;
 char *buffer = NULL;
 
 
-void SetInput(char *_input)
+void SetInput(unsigned char *_input)
 {
 	int i, l;
-	l = strlen(_input);
+	l = strlen((char*)_input);
 	if (l > 254) l = 254;
 	for(i=0; i<l; i++)
 		input[i] = _input[i];
@@ -80,7 +68,7 @@ void SetPhonemeLength();
 void AdjustLengths();
 void Code41240();
 void Insert(unsigned char position, unsigned char mem60, unsigned char mem59, unsigned char mem58);
-void InsertBreath(unsigned char mem59);
+void InsertBreath();
 void PrepareOutput();
 void SetMouthThroat(unsigned char mouth, unsigned char throat);
 
@@ -106,6 +94,7 @@ void Init() {
 }
 
 int SAMMain() {
+	unsigned char X = 0; //!! is this intended like this?
 	Init();
     /* FIXME: At odds with assignment in Init() */
 	phonemeindex[255] = 32; //to prevent buffer overflow
@@ -123,7 +112,7 @@ int SAMMain() {
 			break; // error: delete all behind it
 		}
 	} while (++X != 0);
-	InsertBreath(mem59);
+	InsertBreath();
 
 	if (debug) PrintPhonemes(phonemeindex, phonemeLength, stress);
 
@@ -153,13 +142,14 @@ void PrepareOutput() {
             phonemeLengthOutput[destpos] = phonemeLength[srcpos];
             stressOutput[destpos]        = stress[srcpos];
             ++destpos;
+            break;
         }
 		++srcpos;
 	}
 }
 
 
-void InsertBreath(unsigned char mem59) {
+void InsertBreath() {
 	unsigned char mem54 = 255;
 	unsigned char len = 0;
 	unsigned char index; //variable Y
@@ -170,11 +160,11 @@ void InsertBreath(unsigned char mem59) {
 		len += phonemeLength[pos];
 		if (len < 232) {
 			if (index == BREAK) {
-            } else if (!(flags[index]& FLAG_PUNCT)) {
+            } else if (!(flags[index] & FLAG_PUNCT)) {
                 if (index == 0) mem54 = pos;
             } else {
                 len = 0;
-                Insert(++pos, BREAK, mem59, 0);
+                Insert(++pos, BREAK, 0, 0);
             }
 		} else {
             pos = mem54;
@@ -183,7 +173,7 @@ void InsertBreath(unsigned char mem59) {
             stress[pos] = 0;
 
             len = 0;
-            Insert(++pos, BREAK, mem59, 0);
+            Insert(++pos, BREAK, 0, 0);
         }
         ++pos;
 	}
@@ -243,7 +233,6 @@ void Insert(unsigned char position/*var57*/, unsigned char mem60, unsigned char 
 	phonemeindex[position]  = mem60;
 	phonemeLength[position] = mem59;
 	stress[position]        = mem58;
-	return;
 }
 
 
@@ -263,7 +252,7 @@ signed int full_match(unsigned char sign1, unsigned char sign2) {
     return -1;
 }
 
-signed int wild_match(unsigned char sign1, unsigned char sign2) {
+signed int wild_match(unsigned char sign1) {
     signed int Y = 0;
     do {
 		if (signInputTable2[Y] == '*') {
@@ -328,33 +317,31 @@ signed int wild_match(unsigned char sign1, unsigned char sign2) {
 // function returns with a 1 indicating success.
 int Parser1()
 {
-	int i;
 	unsigned char sign1;
-	unsigned char sign2;
 	unsigned char position = 0;
 	unsigned char srcpos   = 0;
 
-	for(i=0; i<256; i++) stress[i] = 0; // Clear the stress table.
+	memset(stress, 0, 256); // Clear the stress table.
 
 	while((sign1 = input[srcpos]) != 155) { // 155 (\233) is end of line marker
-		sign2 = input[++srcpos];
-		signed int match = 0;
+		signed int match;
+		unsigned char sign2 = input[++srcpos];
         if ((match = full_match(sign1, sign2)) != -1) {
             // Matched both characters (no wildcards)
             phonemeindex[position++] = (unsigned char)match;
             ++srcpos; // Skip the second character of the input as we've matched it
-        } else if ((match=wild_match(sign1,sign2)) != -1) {
+        } else if ((match = wild_match(sign1)) != -1) {
             // Matched just the first character (with second character matching '*'
             phonemeindex[position++] = (unsigned char)match;
         } else {
             // Should be a stress character. Search through the
             // stress table backwards.
             match = 8; // End of stress table. FIXME: Don't hardcode.
-            while( (sign1 != stressInputTable[match]) && (match>0)) --match;
+            while( (sign1 != stressInputTable[match]) && (match>0) ) --match;
             
             if (match == 0) return 0; // failure
 
-            stress[position-1] = match; // Set stress for prior phoneme
+            stress[position-1] = (unsigned char)match; // Set stress for prior phoneme
         }
 	} //while
 
@@ -366,7 +353,7 @@ int Parser1()
 //change phonemelength depedendent on stress
 void SetPhonemeLength() {
 	int position = 0;
-	while(phonemeindex[position] != 255 ) {
+	while(phonemeindex[position] != 255) {
 		unsigned char A = stress[position];
 		if ((A == 0) || ((A&128) != 0)) {
 			phonemeLength[position] = phonemeLengthTable[phonemeindex[position]];
@@ -383,12 +370,12 @@ void Code41240() {
 	while(phonemeindex[pos] != END) {
 		unsigned char index = phonemeindex[pos];
 
-		if ((flags[index]& FLAG_STOPCONS)) {
-            if ((flags[index]& FLAG_PLOSIVE)) {
+		if ((flags[index] & FLAG_STOPCONS)) {
+            if ((flags[index] & FLAG_PLOSIVE)) {
                 unsigned char A;
                 unsigned char X = pos;
-                while(!(A = phonemeindex[++X])); /* Skip pause */
-                
+                while(!phonemeindex[++X]); /* Skip pause */
+                A = phonemeindex[X];
                 if (A != END) {
                     if ((flags[A] & 8) || (A == 36) || (A == 37)) {++pos; continue;} // '/H' '/X'
                 }
@@ -403,11 +390,11 @@ void Code41240() {
 }
 
 
-void ChangeRule(unsigned char position, unsigned char rule,unsigned char mem60, unsigned char mem59, unsigned char stress, const char * descr)
+void ChangeRule(unsigned char position, unsigned char mem60, const char * descr)
 {
     if (debug) printf("RULE: %s\n",descr);
-    phonemeindex[position] = rule;
-    Insert(position+1, mem60, mem59, stress);
+    phonemeindex[position] = 13; //rule;
+    Insert(position+1, mem60, 0, stress[position]);
 }
 
 void drule(const char * str) {
@@ -416,13 +403,17 @@ void drule(const char * str) {
 
 void drule_pre(const char *descr, unsigned char X) {
     drule(descr);
-    if (debug) printf("PRE\n");
-    if (debug) printf("phoneme %d (%c%c) length %d\n", X, signInputTable1[phonemeindex[X]], signInputTable2[phonemeindex[X]],  phonemeLength[X]);
+    if (debug) {
+        printf("PRE\n");
+        printf("phoneme %d (%c%c) length %d\n", X, signInputTable1[phonemeindex[X]], signInputTable2[phonemeindex[X]], phonemeLength[X]);
+    }
 }
 
 void drule_post(unsigned char X) {
-    if (debug) printf("POST\n");
-    if (debug) printf("phoneme %d (%c%c) length %d\n", X, signInputTable1[phonemeindex[X]], signInputTable2[phonemeindex[X]], phonemeLength[X]);
+    if (debug) {
+        printf("POST\n");
+        printf("phoneme %d (%c%c) length %d\n", X, signInputTable1[phonemeindex[X]], signInputTable2[phonemeindex[X]], phonemeLength[X]);
+    }
 }
 
 
@@ -459,14 +450,14 @@ void rule_alveolar_uw(unsigned char X) {
     }
 }
 
-void rule_ch(unsigned char X, unsigned char mem59) {
+void rule_ch(unsigned char X) {
     drule("CH -> CH CH+1");
-    Insert(X+1, 43, mem59, stress[X]);
+    Insert(X+1, 43, 0, stress[X]);
 }
 
-void rule_j(unsigned char X, unsigned char mem59) {
+void rule_j(unsigned char X) {
     drule("J -> J J+1");
-    Insert(X+1, 45, mem59, stress[X]);
+    Insert(X+1, 45, 0, stress[X]);
 }
 
 void rule_g(unsigned char pos) {
@@ -490,7 +481,7 @@ void change(unsigned char pos, unsigned char val, const char * rule) {
 }
 
 
-void rule_dipthong(unsigned char p, unsigned char pf, unsigned char pos, unsigned char mem59) {
+void rule_dipthong(unsigned char p, unsigned short pf, unsigned char pos) {
     // <DIPTHONG ENDING WITH WX> -> <DIPTHONG ENDING WITH WX> WX
     // <DIPTHONG NOT ENDING WITH WX> -> <DIPTHONG NOT ENDING WITH WX> YX
     // Example: OIL, COW
@@ -500,14 +491,12 @@ void rule_dipthong(unsigned char p, unsigned char pf, unsigned char pos, unsigne
                 
     // Insert at WX or YX following, copying the stress
     if (A==20) drule("insert WX following dipthong NOT ending in IY sound");
-    if (A==21) drule("insert YX following dipthong ending in IY sound");
-    Insert(pos+1, A, mem59, stress[pos]);
+    else if (A==21) drule("insert YX following dipthong ending in IY sound");
+    Insert(pos+1, A, 0, stress[pos]);
                 
-    if (p == 53 || p == 42 || p == 44) {
-        if (p == 53) rule_alveolar_uw(pos);   // Example: NEW, DEW, SUE, ZOO, THOO, TOO
-        else if (p == 42) rule_ch(pos,mem59); // Example: CHEW
-        else if (p == 44) rule_j(pos,mem59);  // Example: JAY
-    }
+    if (p == 53) rule_alveolar_uw(pos); // Example: NEW, DEW, SUE, ZOO, THOO, TOO
+    else if (p == 42) rule_ch(pos);     // Example: CHEW
+    else if (p == 44) rule_j(pos);      // Example: JAY
 }
 
 void Parser2() {
@@ -517,6 +506,9 @@ void Parser2() {
 	if (debug) printf("Parser2\n");
 
 	while((p = phonemeindex[pos]) != END) {
+		unsigned short pf;
+		unsigned char prior;
+
 		if (debug) printf("%d: %c%c\n", pos, signInputTable1[p], signInputTable2[p]);
 
 		if (p == 0) { // Is phoneme pause?
@@ -524,13 +516,13 @@ void Parser2() {
 			continue;
 		}
 
-        unsigned char pf = flags[p];
-        unsigned char prior = phonemeindex[pos-1];
+        pf = flags[p];
+        prior = phonemeindex[pos-1];
 
-        if ((pf & FLAG_DIPTHONG)) rule_dipthong(p, pf, pos, mem59);
-        else if (p == 78) ChangeRule(pos, 13, 24, mem59, stress[pos],"UL -> AX L");       // Example: MEDDLE
-        else if (p == 79) ChangeRule(pos, 13, 27, mem59, stress[pos], "UM -> AX M"); // Example: ASTRONOMY
-        else if (p == 80) ChangeRule(pos, 13, 28, mem59, stress[pos], "UN -> AX N"); // Example: FUNCTION
+        if ((pf & FLAG_DIPTHONG)) rule_dipthong(p, pf, pos);
+        else if (p == 78) ChangeRule(pos, 24, "UL -> AX L"); // Example: MEDDLE
+        else if (p == 79) ChangeRule(pos, 27, "UM -> AX M"); // Example: ASTRONOMY
+        else if (p == 80) ChangeRule(pos, 28, "UN -> AX N"); // Example: FUNCTION
         else if ((pf & FLAG_VOWEL) && stress[pos]) {
             // RULE:
             //       <STRESSED VOWEL> <SILENCE> <STRESSED VOWEL> -> <STRESSED VOWEL> <SILENCE> Q <VOWEL>
@@ -539,7 +531,7 @@ void Parser2() {
                 p = phonemeindex[pos+2];
                 if (p!=END && (flags[p] & FLAG_VOWEL) && stress[pos+2]) {
                     drule("Insert glottal stop between two stressed vowels with space between them");
-                    Insert(pos+2, 31, mem59, 0); // 31 = 'Q'
+                    Insert(pos+2, 31, 0, 0); // 31 = 'Q'
                 }
             }
         } else if (p == pR) { // RULES FOR PHONEMES BEFORE R
@@ -580,8 +572,8 @@ void Parser2() {
             } else if (!(pf & FLAG_PLOSIVE)) {
                 p = phonemeindex[pos];
                 if (p == 53) rule_alveolar_uw(pos);   // Example: NEW, DEW, SUE, ZOO, THOO, TOO
-                else if (p == 42) rule_ch(pos,mem59); // Example: CHEW
-                else if (p == 44) rule_j(pos,mem59);  // Example: JAY
+                else if (p == 42) rule_ch(pos); // Example: CHEW
+                else if (p == 44) rule_j(pos);  // Example: JAY
             }
             
             if (p == 69 || p == 57) { // 'T', 'D'
@@ -620,17 +612,20 @@ void AdjustLengths() {
     // increased by (length * 1.5) + 1
 
     // loop index
+	{
 	unsigned char X = 0;
 	unsigned char index;
 
 	while((index = phonemeindex[X]) != END) {
+		unsigned char loopIndex;
+
 		// not punctuation?
 		if((flags[index] & FLAG_PUNCT) == 0) {
 			++X;
 			continue;
 		}
-		
-		unsigned char loopIndex = X;
+
+		loopIndex = X;
 
         while (--X && !(flags[phonemeindex[X]] & FLAG_VOWEL)); // back up while not a vowel
         if (X == 0) break;
@@ -650,11 +645,13 @@ void AdjustLengths() {
 		} while (++X != loopIndex);
 		X++;
 	}  // while
+	}
 
     // Similar to the above routine, but shorten vowels under some circumstances
 
-    // Loop throught all phonemes
-	unsigned char loopIndex=0;
+    // Loop through all phonemes
+	loopIndex=0;
+	index;
 
 	while((index = phonemeindex[loopIndex]) != END) {
 		unsigned char X = loopIndex;
@@ -671,7 +668,7 @@ void AdjustLengths() {
                     }
 				}
 			} else { // Got here if not <VOWEL>
-                unsigned char flag = (index == END) ? 65 : flags[index]; // 65 if end marker
+                unsigned short flag = (index == END) ? 65 : flags[index]; // 65 if end marker
 
                 if (!(flag & FLAG_VOICED)) { // Unvoiced
                     // *, .*, ?*, ,*, -*, DX, S*, SH, F*, TH, /H, /X, CH, P*, T*, K*, KX
@@ -683,9 +680,10 @@ void AdjustLengths() {
                         drule_post(loopIndex);
                     }
                 } else {
+                    unsigned char A;
                     drule_pre("<VOWEL> <VOICED CONSONANT> - increase vowel by 1/2 + 1\n",X-1);
                     // decrease length
-                    unsigned char A = phonemeLength[loopIndex];
+                    A = phonemeLength[loopIndex];
                     phonemeLength[loopIndex] = (A >> 2) + A + 1;     // 5/4*A + 1
                     drule_post(loopIndex);
                 }

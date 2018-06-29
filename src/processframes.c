@@ -1,4 +1,3 @@
-
 #include "render.h"
 
 extern unsigned char speed;
@@ -45,12 +44,11 @@ static void CombineGlottalAndFormants(unsigned char phase1, unsigned char phase2
 //
 void ProcessFrames(unsigned char mem48)
 {
-
     unsigned char speedcounter = 72;
 	unsigned char phase1 = 0;
     unsigned char phase2 = 0;
 	unsigned char phase3 = 0;
-    unsigned char mem66;
+    unsigned char mem66 = 0; //!! was not initialized
     
     unsigned char Y = 0;
 
@@ -75,7 +73,7 @@ void ProcessFrames(unsigned char mem48)
                 Y++; //go to next amplitude
                 // decrement the frame count
                 mem48--;
-                if(mem48 == 0) 	return;
+                if(mem48 == 0) return;
                 speedcounter = speed;
             }
          
@@ -112,4 +110,3 @@ void ProcessFrames(unsigned char mem48)
         phase3 = 0;
 	}
 }
-
