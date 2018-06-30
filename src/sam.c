@@ -188,7 +188,6 @@ void InsertBreath(void) {
 	}
 }
 
-
 // Iterates through the phoneme buffer, copying the stress value from
 // the following phoneme under the following circumstance:
        
@@ -201,8 +200,6 @@ void InsertBreath(void) {
 // For example, the word LOITER is represented as LOY5TER, with as stress
 // of 5 on the dipthong OY. This routine will copy the stress value of 6 (5+1)
 // to the L that precedes it.
-
-
 
 void CopyStress(void) {
     // loop thought all the phonemes to be output

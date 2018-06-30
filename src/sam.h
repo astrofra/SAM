@@ -1,6 +1,8 @@
 #ifndef SAM_H
 #define SAM_H
 
+#define SWAP_ENDIAN_WORD(A) ((((A) & 0xFF) << 24) | (((A) & 0xFF00) << 16)| (((A) & 0xFF0000) >> 16) | (((A) & 0xFF000000) >> 24))
+
 void SetInput(unsigned char *_input);
 void SetSpeed(unsigned char _speed);
 void SetPitch(unsigned char _pitch);

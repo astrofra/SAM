@@ -67,16 +67,9 @@ void Output(int index, unsigned char A)
 	bufferpos += timetable[oldtimetableindex][index];
 	oldtimetableindex = index;
 	bdiv = bufferpos/50;
-	// write a little bit in advance
-	// for(k=0; k<5; k++)
-	// 	buffer[bufferpos/50 + k] = (A & 15)*16;
-#ifndef _WIN32
+
 	for(k=0; k<5; k++)
 		buffer[bdiv + k] = ((A & 15) << 4); /* unsigned */
-#else
-	for(k=0; k<5; k++)
-		buffer[bdiv + k] = ((A & 15) << 4) - 127; /* signed */
-#endif		
 }
 
 

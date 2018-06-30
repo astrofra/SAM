@@ -20,6 +20,12 @@
 
 extern struct DosLibrary *DOSBase;
 
+#ifndef _WIN32
+static int min(int a, int b) { return a<b?a:b; }
+#endif
+
+extern char *buffer;
+
 void WriteWav(char* filename, char* buffer, int bufferlength)
 {
 	unsigned int filesize;
@@ -35,7 +41,7 @@ void WriteWav(char* filename, char* buffer, int bufferlength)
 	//RIFF header
 	fwrite("RIFF", 4, 1,file);
 	filesize=bufferlength + 12 + 16 + 8 - 8;
-	fwrite(&filesize, 4, 1, file);
+ 	fwrite(&filesize, 4, 1, file);
 	fwrite("WAVE", 4, 1, file);
 
 	//format chunk
@@ -163,22 +169,22 @@ int main(int argc, char **argv)
 			} else
 			if (strcmp(&argv[i][1], "pitch")==0)
 			{
-				SetPitch((unsigned char)(atoi(argv[i+1]),255));
+				SetPitch((unsigned char)min(atoi(argv[i+1]),255));
 				i++;
 			} else
 			if (strcmp(&argv[i][1], "speed")==0)
 			{
-				SetSpeed((unsigned char)(atoi(argv[i+1]),255));
+				SetSpeed((unsigned char)min(atoi(argv[i+1]),255));
 				i++;
 			} else
 			if (strcmp(&argv[i][1], "mouth")==0)
 			{
-				SetMouth((unsigned char)(atoi(argv[i+1]),255));
+				SetMouth((unsigned char)min(atoi(argv[i+1]),255));
 				i++;
 			} else
 			if (strcmp(&argv[i][1], "throat")==0)
 			{
-				SetThroat((unsigned char)(atoi(argv[i+1]),255));
+				SetThroat((unsigned char)min(atoi(argv[i+1]),255));
 				i++;
 			} else
 			{
@@ -218,6 +224,14 @@ int main(int argc, char **argv)
 		WriteWav(wavfilename, GetBuffer(), GetBufferLength()/50);
 	else
 		OutputSound();
+
+	#ifdef _WIN32
+		if (buffer != NULL)
+			free(buffer);
+	#else
+		if (buffer != NULL)
+		    FreeMem(buffer, 22050*10);
+	#endif	
 
 	return 0;
 }
