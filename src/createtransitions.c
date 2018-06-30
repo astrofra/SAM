@@ -75,7 +75,7 @@ unsigned char Read(unsigned char p, unsigned char Y)
 	case 173: return amplitude2[Y];
 	case 174: return amplitude3[Y];
 	default: 
-		printf("Error reading from tables");
+		// printf("Error reading from tables"); /* optim */
 		return 0;
 	}
 }
@@ -92,7 +92,7 @@ void Write(unsigned char p, unsigned char Y, unsigned char value)
 	case 173: amplitude2[Y] = value; return;
 	case 174: amplitude3[Y] = value; return;
 	default:
-		printf("Error writing to tables\n");
+		// printf("Error writing to tables\n"); /* optim */
 		return;
 	}
 }
@@ -101,7 +101,7 @@ void Write(unsigned char p, unsigned char Y, unsigned char value)
 // linearly interpolate values
 void interpolate(unsigned char width, unsigned char table, unsigned char frame, char mem53)
 {
-    unsigned char sign      = (mem53 < 0);
+    unsigned char sign      = mem53; /* (mem53 < 0); */
     unsigned char remainder = abs(mem53) % width;
     unsigned char div       = mem53 / width;
 
@@ -127,8 +127,11 @@ void interpolate_pitch(unsigned char pos, unsigned char mem49, unsigned char pha
     // next phoneme
         
     // half the width of the current and next phoneme
-    unsigned char cur_width  = phonemeLengthOutput[pos] / 2;
-    unsigned char next_width = phonemeLengthOutput[pos+1] / 2;
+    // unsigned char cur_width  = phonemeLengthOutput[pos] / 2;
+    // unsigned char next_width = phonemeLengthOutput[pos+1] / 2;
+    unsigned char cur_width  = phonemeLengthOutput[pos] >> 1; /* Optim */
+    unsigned char next_width = phonemeLengthOutput[pos+1] >> 1; /* Optim */
+
     // sum the values
     unsigned char width = cur_width + next_width;
     char pitch = pitches[next_width + mem49] - pitches[mem49- cur_width];

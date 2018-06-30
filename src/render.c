@@ -67,8 +67,10 @@ void Output(int index, unsigned char A)
 	bufferpos += timetable[oldtimetableindex][index];
 	oldtimetableindex = index;
 	// write a little bit in advance
+	// for(k=0; k<5; k++)
+	// 	buffer[bufferpos/50 + k] = (A & 15)*16;
 	for(k=0; k<5; k++)
-		buffer[bufferpos/50 + k] = (A & 15)*16;
+		buffer[bufferpos/50 + k] = (A & 15) << 4; /* optim */
 }
 
 
@@ -172,7 +174,8 @@ void RenderSample(unsigned char *mem66, unsigned char consonantFlag, unsigned ch
 	// /H                     3          0x17
 	// /X                     4          0x17
 
-    unsigned short hi = hibyte*256;
+    // unsigned short hi = hibyte*256;
+    unsigned short hi = hibyte << 8; /* Optim */
 	// voiced sample?
 	unsigned char pitchl = consonantFlag & 248;
 	if(pitchl == 0) {
