@@ -3,14 +3,17 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "includes.prl"
+#include <exec/types.h>
+#include <exec/memory.h>
+#include <devices/audio.h> 
+
 #include "reciter.h"
 #include "sam.h"
 #include "debug.h"
+#include "easysound.h"
 
-#ifdef USESDL
-#include <SDL.h>
-#include <SDL_audio.h>
-#endif
+extern struct DosLibrary *DOSBase;
 
 void WriteWav(char* filename, char* buffer, int bufferlength)
 {
@@ -48,7 +51,7 @@ void WriteWav(char* filename, char* buffer, int bufferlength)
 	fclose(file);
 }
 
-void PrintUsage()
+void PrintUsage(void)
 {
 	printf("usage: sam [options] Word1 Word2 ....\n");
 	printf("options\n");
@@ -94,59 +97,15 @@ void PrintUsage()
 	printf("Q            kitt-en (glottal stop)    /H        a(h)ead	\n");	
 }
 
-#ifdef USESDL
-
 int pos = 0;
-void MixAudio(void *unused, Uint8 *stream, int len)
+
+void OutputSound(void)
 {
-	int bufferpos = GetBufferLength();
-	char *buffer = GetBuffer();
-	int i;
-	if (pos >= bufferpos) return;
-	if ((bufferpos-pos) < len) len = (bufferpos-pos);
-	for(i=0; i<len; i++)
-	{
-		stream[i] = buffer[pos];
-		pos++;
-	}
+	struct SoundInfo *speech_buffer = PrepareSoundFromBuffer(GetBuffer(), GetBufferLength()/50, 22050);
+	PlaySound(speech_buffer, MAXVOLUME, LEFT0, NORMALRATE, ONCE);
+	Delay(GetBufferLength()/22050);
+	StopSound(LEFT0);
 }
-
-
-void OutputSound()
-{
-	int bufferpos = GetBufferLength();
-	bufferpos /= 50;
-	SDL_AudioSpec fmt;
-
-	fmt.freq = 22050;
-	fmt.format = AUDIO_U8;
-	fmt.channels = 1;
-	fmt.samples = 2048;
-	fmt.callback = MixAudio;
-	fmt.userdata = NULL;
-
-	/* Open the audio device and start playing sound! */
-	if ( SDL_OpenAudio(&fmt, NULL) < 0 ) 
-	{
-		printf("Unable to open audio: %s\n", SDL_GetError());
-		exit(1);
-	}
-	SDL_PauseAudio(0);
-	//SDL_Delay((bufferpos)/7);
-	
-	while (pos < bufferpos)
-	{
-		SDL_Delay(100);
-	}
-	
-	SDL_CloseAudio();
-}
-
-#else
-
-void OutputSound() {}
-
-#endif	
 
 int debug = 0;
 

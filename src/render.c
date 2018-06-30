@@ -38,7 +38,7 @@ void AddInflection(unsigned char mem48, unsigned char X);
 //return = hibyte(mem39212*mem39213) <<  1
 unsigned char trans(unsigned char a, unsigned char b)
 {
-    return (((unsigned int)a * b) >> 8) << 1;
+    return (unsigned char)(((unsigned int)a * b) >> 8) << 1;
 }
 
 
@@ -63,14 +63,20 @@ static const int timetable[5][5] =
 void Output(int index, unsigned char A)
 {
 	static unsigned oldtimetableindex = 0;
-	int k;
+	int k,bdiv;
 	bufferpos += timetable[oldtimetableindex][index];
 	oldtimetableindex = index;
+	bdiv = bufferpos/50;
 	// write a little bit in advance
 	// for(k=0; k<5; k++)
 	// 	buffer[bufferpos/50 + k] = (A & 15)*16;
+#ifndef _WIN32
 	for(k=0; k<5; k++)
-		buffer[bufferpos/50 + k] = (A & 15) << 4; /* optim */
+		buffer[bdiv + k] = ((A & 15) << 4); /* unsigned */
+#else
+	for(k=0; k<5; k++)
+		buffer[bdiv + k] = ((A & 15) << 4) - 127; /* signed */
+#endif		
 }
 
 

@@ -205,5 +205,5 @@ unsigned char CreateTransitions()
 	} 
 
     // add the length of this phoneme
-    return mem49 + phonemeLengthOutput[pos];
+    return (unsigned char)(mem49 + phonemeLengthOutput[pos]);
 }

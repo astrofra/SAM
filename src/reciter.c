@@ -13,7 +13,7 @@ static unsigned char inputtemp[256];   // secure copy of input tab36096
 unsigned char Code37055(unsigned char npos, unsigned char mask)
 {
 	X = npos;
-	return tab36376[inputtemp[X]] & mask;
+	return (unsigned char)(tab36376[inputtemp[X]] & mask);
 }
 
 unsigned int match(const char * str) {

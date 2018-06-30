@@ -6,6 +6,7 @@
 #include "sam.h"
 #include "render.h"
 #include "SamTabs.h"
+#include "includes.prl"
 
 enum {
     pR    = 23,
@@ -51,34 +52,39 @@ void SetInput(unsigned char *_input)
 	input[l] = 0;
 }
 
-void SetSpeed(unsigned char _speed) {speed = _speed;};
-void SetPitch(unsigned char _pitch) {pitch = _pitch;};
-void SetMouth(unsigned char _mouth) {mouth = _mouth;};
-void SetThroat(unsigned char _throat) {throat = _throat;};
-void EnableSingmode() {singmode = 1;};
-char* GetBuffer(){return buffer;};
-int GetBufferLength(){return bufferpos;};
+void SetSpeed(unsigned char _speed) {speed = _speed;}
+void SetPitch(unsigned char _pitch) {pitch = _pitch;}
+void SetMouth(unsigned char _mouth) {mouth = _mouth;}
+void SetThroat(unsigned char _throat) {throat = _throat;}
+void EnableSingmode(void) {singmode = 1;}
+char* GetBuffer(void){return buffer;}
+int GetBufferLength(void){return bufferpos;}
 
-void Init();
-int Parser1();
-void Parser2();
-int SAMMain();
-void CopyStress();
-void SetPhonemeLength();
-void AdjustLengths();
-void Code41240();
-void Insert(unsigned char position, unsigned char mem60, unsigned char mem59, unsigned char mem58);
-void InsertBreath();
-void PrepareOutput();
+void Init(void);
+int Parser1(void);
+void Parser2(void);
+int SAMMain(void);
+void CopyStress(void);
+void SetPhonemeLength(void);
+void AdjustLengths(void);
+void Code41240(void);
+void InsertAtPosition(unsigned char position, unsigned char mem60, unsigned char mem59, unsigned char mem58);
+void InsertBreath(void);
+void PrepareOutput(void);
 void SetMouthThroat(unsigned char mouth, unsigned char throat);
 
-void Init() {
-	int i;
+void Init(void) {
+	int i, buffer_size;
 	SetMouthThroat( mouth, throat);
 
 	bufferpos = 0;
 	// TODO, check for free the memory, 10 seconds of output should be more than enough
-	buffer = malloc(22050*10); 
+    buffer_size = 22050*10;
+#ifdef _WIN32
+	buffer = malloc(buffer_size);
+#else
+    buffer = (char *)AllocMem(buffer_size, MEMF_CHIP|MEMF_CLEAR );
+#endif
 
 	for(i=0; i<256; i++) {
 		stress[i] = 0;
@@ -93,7 +99,7 @@ void Init() {
 	phonemeindex[255] = END; //to prevent buffer overflow // ML : changed from 32 to 255 to stop freezing with long inputs
 }
 
-int SAMMain() {
+int SAMMain(void) {
 	unsigned char X = 0; //!! is this intended like this?
 	Init();
     /* FIXME: At odds with assignment in Init() */
@@ -120,7 +126,7 @@ int SAMMain() {
 	return 1;
 }
 
-void PrepareOutput() {
+void PrepareOutput(void) {
 	unsigned char srcpos  = 0; // Position in source
 	unsigned char destpos = 0; // Position in output
 
@@ -149,7 +155,7 @@ void PrepareOutput() {
 }
 
 
-void InsertBreath() {
+void InsertBreath(void) {
 	unsigned char mem54 = 255;
 	unsigned char len = 0;
 	unsigned char index; //variable Y
@@ -164,7 +170,7 @@ void InsertBreath() {
                 if (index == 0) mem54 = pos;
             } else {
                 len = 0;
-                Insert(++pos, BREAK, 0, 0);
+                InsertAtPosition(++pos, BREAK, 0, 0);
             }
 		} else {
             pos = mem54;
@@ -173,7 +179,7 @@ void InsertBreath() {
             stress[pos] = 0;
 
             len = 0;
-            Insert(++pos, BREAK, 0, 0);
+            InsertAtPosition(++pos, BREAK, 0, 0);
         }
         ++pos;
 	}
@@ -195,7 +201,7 @@ void InsertBreath() {
 
 
 
-void CopyStress() {
+void CopyStress(void) {
     // loop thought all the phonemes to be output
 	unsigned char pos=0; //mem66
     unsigned char Y;
@@ -220,7 +226,7 @@ void CopyStress() {
 	}
 }
 
-void Insert(unsigned char position/*var57*/, unsigned char mem60, unsigned char mem59, unsigned char mem58)
+void InsertAtPosition(unsigned char position, unsigned char mem60, unsigned char mem59, unsigned char mem58)
 {
 	int i;
 	for(i=253; i >= position; i--) // ML : always keep last safe-guarding 255	
@@ -315,7 +321,7 @@ signed int wild_match(unsigned char sign1) {
 // The character <0x9B> marks the end of text in input[]. When it is reached,
 // the index 255 is placed at the end of the phonemeIndexTable[], and the
 // function returns with a 1 indicating success.
-int Parser1()
+int Parser1(void)
 {
 	unsigned char sign1;
 	unsigned char position = 0;
@@ -351,7 +357,7 @@ int Parser1()
 
 
 //change phonemelength depedendent on stress
-void SetPhonemeLength() {
+void SetPhonemeLength(void) {
 	int position = 0;
 	while(phonemeindex[position] != 255) {
 		unsigned char A = stress[position];
@@ -364,7 +370,7 @@ void SetPhonemeLength() {
 	}
 }
 
-void Code41240() {
+void Code41240(void) {
 	unsigned char pos=0;
 
 	while(phonemeindex[pos] != END) {
@@ -381,8 +387,8 @@ void Code41240() {
                 }
                 
             }
-            Insert(pos+1, index+1, phonemeLengthTable[index+1], stress[pos]);
-            Insert(pos+2, index+2, phonemeLengthTable[index+2], stress[pos]);
+            InsertAtPosition(pos+1, index+1, phonemeLengthTable[index+1], stress[pos]);
+            InsertAtPosition(pos+2, index+2, phonemeLengthTable[index+2], stress[pos]);
             pos += 2;
         }
         ++pos;
@@ -394,7 +400,7 @@ void ChangeRule(unsigned char position, unsigned char mem60, const char * descr)
 {
     if (debug) printf("RULE: %s\n",descr);
     phonemeindex[position] = 13; //rule;
-    Insert(position+1, mem60, 0, stress[position]);
+    InsertAtPosition(position+1, mem60, 0, stress[position]);
 }
 
 void drule(const char * str) {
@@ -452,12 +458,12 @@ void rule_alveolar_uw(unsigned char X) {
 
 void rule_ch(unsigned char X) {
     drule("CH -> CH CH+1");
-    Insert(X+1, 43, 0, stress[X]);
+    InsertAtPosition(X+1, 43, 0, stress[X]);
 }
 
 void rule_j(unsigned char X) {
     drule("J -> J J+1");
-    Insert(X+1, 45, 0, stress[X]);
+    InsertAtPosition(X+1, 45, 0, stress[X]);
 }
 
 void rule_g(unsigned char pos) {
@@ -492,14 +498,14 @@ void rule_dipthong(unsigned char p, unsigned short pf, unsigned char pos) {
     // Insert at WX or YX following, copying the stress
     if (A==20) drule("insert WX following dipthong NOT ending in IY sound");
     else if (A==21) drule("insert YX following dipthong ending in IY sound");
-    Insert(pos+1, A, 0, stress[pos]);
+    InsertAtPosition(pos+1, A, 0, stress[pos]);
                 
     if (p == 53) rule_alveolar_uw(pos); // Example: NEW, DEW, SUE, ZOO, THOO, TOO
     else if (p == 42) rule_ch(pos);     // Example: CHEW
     else if (p == 44) rule_j(pos);      // Example: JAY
 }
 
-void Parser2() {
+void Parser2(void) {
 	unsigned char pos = 0; //mem66;
     unsigned char p;
 
@@ -531,7 +537,7 @@ void Parser2() {
                 p = phonemeindex[pos+2];
                 if (p!=END && (flags[p] & FLAG_VOWEL) && stress[pos+2]) {
                     drule("Insert glottal stop between two stressed vowels with space between them");
-                    Insert(pos+2, 31, 0, 0); // 31 = 'Q'
+                    InsertAtPosition(pos+2, 31, 0, 0); // 31 = 'Q'
                 }
             }
         } else if (p == pR) { // RULES FOR PHONEMES BEFORE R
@@ -603,7 +609,7 @@ void Parser2() {
 //         <VOICED STOP CONSONANT> {optional silence} <STOP CONSONANT> - shorten both to 1/2 + 1
 //         <LIQUID CONSONANT> <DIPTHONG> - decrease by 2
 //
-void AdjustLengths() {
+void AdjustLengths(void) {
     // LENGTHEN VOWELS PRECEDING PUNCTUATION
     //
     // Search for punctuation. If found, back up to the first vowel, then
