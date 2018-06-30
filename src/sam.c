@@ -1,3 +1,7 @@
+#ifndef _WIN32
+#include "includes.prl"
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -6,7 +10,6 @@
 #include "sam.h"
 #include "render.h"
 #include "SamTabs.h"
-#include "includes.prl"
 
 enum {
     pR    = 23,

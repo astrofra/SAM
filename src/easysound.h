@@ -8,6 +8,7 @@
 /* 181 41  LIDINGO    */
 /* SWEDEN             */
 
+#ifndef _WIN32
 #include "includes.prl"
 #include <intuition/intuition.h>
 #include <graphics/gfxbase.h>
@@ -16,7 +17,6 @@
 #include <hardware/custom.h>
 #include <graphics/gfxmacros.h>
 
-#ifndef _WIN32
 #ifndef SOUND_ROUTINES
 #define SOUND_ROUTINES
 

@@ -3,10 +3,15 @@
 #include <ctype.h>
 #include <string.h>
 
+#ifndef _WIN32
+
 #include "includes.prl"
 #include <exec/types.h>
 #include <exec/memory.h>
-#include <devices/audio.h> 
+#include <devices/audio.h>
+
+#endif // !_WIN32
+
 
 #include "reciter.h"
 #include "sam.h"
@@ -99,13 +104,18 @@ void PrintUsage(void)
 
 int pos = 0;
 
-void OutputSound(void)
-{
+#ifndef _WIN32
+void OutputSound(void) {
 	struct SoundInfo *speech_buffer = PrepareSoundFromBuffer(GetBuffer(), GetBufferLength()/50, 22050);
 	PlaySound(speech_buffer, MAXVOLUME, LEFT0, NORMALRATE, ONCE);
 	Delay(GetBufferLength()/22050);
 	StopSound(LEFT0);
 }
+#else
+void OutputSound(void) {
+	printf("Direct output not implemented.\n");
+}
+#endif
 
 int debug = 0;
 
@@ -196,15 +206,6 @@ int main(int argc, char **argv)
 		if (debug)
 			printf("phonetic input: %s\n", input);
 	} else strcat((char*)input, "\x9b");
-
-#ifdef USESDL
-	if ( SDL_Init(SDL_INIT_AUDIO) < 0 ) 
-	{
-		printf("Unable to init SDL: %s\n", SDL_GetError());
-		exit(1);
-	}
-	atexit(SDL_Quit);
-#endif
 
 	SetInput(input);
 	if (!SAMMain())

@@ -7,6 +7,7 @@ void SetPitch(unsigned char _pitch);
 void SetMouth(unsigned char _mouth);
 void SetThroat(unsigned char _throat);
 void EnableSingmode(void);
+void Render(void);
 
 char* GetBuffer(void);
 int GetBufferLength(void);
